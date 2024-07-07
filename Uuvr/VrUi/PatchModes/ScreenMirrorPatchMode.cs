@@ -102,10 +102,14 @@ public class ScreenMirrorPatchMode : UuvrBehaviour, VrUiPatchMode
             Type.GetType("UnityEngine.XR.XRSettings, UnityEngine.XRModule") ??
             Type.GetType("UnityEngine.XR.XRSettings, UnityEngine.VRModule") ??
             Type.GetType("UnityEngine.VR.VRSettings, UnityEngine");
-        
+
         // This method of projecting the UI onto a texture basically just copies what's currently on the flat screen.
         // We don't want the game itself to show up there, only the UI. So we disable mirroring the VR view to the flat screen.
         xrSettingsType.GetProperty("showDeviceView").SetValue(null, mirror, null);
+
+        // 新版里使用这种方法
+        //int val = mirror ? 1 : 0;
+        //xrSettingsType.GetProperty("gameViewRenderMode").SetValue(null, val, null);
     }
 
     private IEnumerator EndOfFrameCoroutine()

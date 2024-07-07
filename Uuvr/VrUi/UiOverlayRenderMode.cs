@@ -21,6 +21,7 @@ public class UiOverlayRenderMode: UuvrBehaviour
 
     private void Awake()
     {
+        // 创建一个UI相机，只用来显示VR UI层
         _uiSceneCamera = Create<UuvrPoseDriver>(transform).gameObject.AddComponent<Camera>();
         VrCamera.VrCamera.IgnoredCameras.Add(_uiSceneCamera);
         _uiSceneCamera.clearFlags = CameraClearFlags.Depth;

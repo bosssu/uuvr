@@ -20,6 +20,12 @@ public class UuvrBehaviour: MonoBehaviour
     }
 #endif
     
+    /// <summary>
+    ///  在transform下创建子物体，并设置Localpos和localrot为0,名字为类型名称
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="parent"></param>
+    /// <returns></returns>
     public static T Create<T>(Transform parent) where T: UuvrBehaviour
     {
         return new GameObject(typeof(T).Name)

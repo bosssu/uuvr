@@ -84,16 +84,20 @@ public class VrUiManager : UuvrBehaviour
         var renderer = _vrUiQuad.GetComponent<Renderer>();
 
         // TODO: not sure if this is visible in all games, check Aragami.
-        renderer.material = Canvas.GetDefaultCanvasMaterial();
+        //renderer.material = Canvas.GetDefaultCanvasMaterial();
+        renderer.material = new Material(Shader.Find("Sprites/Default"));
         renderer.material.mainTexture = _uiTexture;
         renderer.material.renderQueue = 5000;
 
+        // 重定向模式是将所有UI通过targetTexture的方式绘制到RenderTextue。
         _canvasRedirectPatchMode = gameObject.AddComponent<CanvasRedirectPatchMode>();
         _canvasRedirectPatchMode.SetUpTargetTexture(_uiTexture);
 
+        // 屏幕镜像的方式
         _screenMirrorPatchMode = gameObject.AddComponent<ScreenMirrorPatchMode>();
         _screenMirrorPatchMode.SetUpTargetTexture(_uiTexture);
         
+        // 控制将UI绘制到一张Quad后 quad的显示方式，overlay会显示在所有物体之上， inworld则当作一个普通模型来显示。可能会被场景物体遮挡。
         _uiOverlayRenderMode = Create<UiOverlayRenderMode>(transform);
         _worldRenderModeFollowTarget = _uiContainer.AddComponent<FollowTarget>();
     }

@@ -2,7 +2,8 @@
 <Project ToolsVersion="Current"
   xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <BepInExDir>C:\Users\rai\AppData\Roaming\raicuparta\rai-pal\data\mod-loaders\bepinex</BepInExDir>
+    <!-- Local staging output. Override: -p:BepInExDir=... or use scripts/Build-Deploy.ps1 -->
+    <BepInExDir Condition="'$(BepInExDir)' == ''">$(MSBuildThisFileDirectory)build</BepInExDir>
   </PropertyGroup>
 
   <!--  Il2Cpp  -->

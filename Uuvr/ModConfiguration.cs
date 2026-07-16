@@ -71,10 +71,15 @@ public class ModConfiguration
     public readonly ConfigEntry<float> CameraPositionOffsetY;
     public readonly ConfigEntry<float> CameraPositionOffsetZ;
     public readonly ConfigEntry<bool> OverrideDepth;
+    public readonly ConfigEntry<bool> DisableDepthOfField;
     public readonly ConfigEntry<bool> PhysicsMatchHeadsetRefreshRate;
     public readonly ConfigEntry<UiPatchMode> PreferredUiPatchMode;
     public readonly ConfigEntry<UiRenderMode> PreferredUiRenderMode;
     public readonly ConfigEntry<ScreenSpaceCanvasType> ScreenSpaceCanvasTypesToPatch;
+    public readonly ConfigEntry<float> UiScale;
+    public readonly ConfigEntry<bool> UiAutoAlign;
+    public readonly ConfigEntry<float> UiAutoAlignInterval;
+    public readonly ConfigEntry<float> UiAutoAlignMaxDistance;
     
 #if MODERN
     public readonly ConfigEntry<VrApi> PreferredVrApi;
@@ -147,6 +152,15 @@ public class ModConfiguration
             new ConfigDescription(
                 "Requires enabling 'Override Depth'. Range is -100 to 100, but you should try to find the lowest value that fixes visibility.",
                 new AcceptableValueRange<int>(-100, 100)));
+
+        // Child tracking + head-locked World Space UI often sits outside the game's DoF focus
+        // plane, so HDRP Gaussian DoF softens the whole menu. Disabling DoF is the stable fix.
+        DisableDepthOfField = config.Bind(
+            "Camera",
+            "Disable Depth Of Field",
+            true,
+            "Disables Depth of Field (Gaussian/physical) on SRP Volume profiles. " +
+            "Use when head-locked UI looks soft/blurred. Scene soft-focus is also removed.");
         
         PhysicsMatchHeadsetRefreshRate = config.Bind(
             "General",
@@ -154,11 +168,13 @@ public class ModConfiguration
             false,
             "Can help fix jiterriness in games that rely a lot on physics. Might break a lot of games too.");
 
+        // CanvasRedirect: non-HDRP → capture camera; HDRP → World Space canvases (stereo-safe).
+        // Mirror: full game-view capture plate (may flatten stereo under the panel).
         PreferredUiPatchMode = config.Bind(
             "UI",
             "UI Patch Mode",
-            UiPatchMode.Mirror,
-            "Method to use for patching UI for VR.");
+            UiPatchMode.CanvasRedirect,
+            "CanvasRedirect recommended (HDRP converts menus to World Space for real stereo). Mirror pastes a flat game-view plate into both eyes.");
         
         VrUiLayerOverride = config.Bind(
             "UI",
@@ -171,19 +187,45 @@ public class ModConfiguration
         ScreenSpaceCanvasTypesToPatch = config.Bind(
             "UI",
             "Screen-space UI elements to patch",
-            ScreenSpaceCanvasType.NotToTexture,
-            "Screen-space UI elements are already visible in VR with no patches. But in some games, they are difficult to see in VR. So you can choose to patch some (or all) of them to be rendered in the VR UI screen.");
+            ScreenSpaceCanvasType.All,
+            "Which screen-space canvases CanvasRedirect should move onto the VR UI capture camera. Use All if menus are still missing in the headset.");
         
         PreferredUiRenderMode = config.Bind(
             "UI",
             "Preferred UI Plane Render Mode",
-#if MODERN
+            // InWorld: UI quad drawn by the game VR camera (safer on HDRP — Overlay camera defaulted to Sky clear and wiped the scene).
+            // OverlayCamera: dedicated top camera; requires HDRP clearColorMode=None (configured in UiCameraSetup).
             UiRenderMode.InWorld,
-#else
-            // Ideally we'd do overlay in all games but that mode can cause a lot of issues.
-            // Most of the issues seem to be in more recent games, so at least for legacy we can default to overlay.
-            UiRenderMode.OverlayCamera,
-#endif
-            "How to render the VR UI Plane. Overlay is usually better, but doesn't work in every game.");
+            "How to render the VR UI Plane. Prefer InWorld on HDRP if Overlay washes the scene to skybox; use Overlay when InWorld is culled/occluded.");
+
+        UiScale = config.Bind(
+            "UI",
+            "UI Scale",
+            1f,
+            new ConfigDescription(
+                "World-space UI size multiplier (1 = default ~1.05m wide panel). Larger = bigger menus in the headset.",
+                new AcceptableValueRange<float>(0.4f, 3f)));
+
+        UiAutoAlign = config.Bind(
+            "UI",
+            "UI Auto Align",
+            true,
+            "Keep world-space UI in front of the active VR camera. Re-picks the camera after teleports/cutscenes so the panel does not freeze at the old location.");
+
+        UiAutoAlignInterval = config.Bind(
+            "UI",
+            "UI Auto Align Interval",
+            0.25f,
+            new ConfigDescription(
+                "Seconds between re-picking the active VR camera (UI still tracks every frame). Lower = faster recovery after teleports.",
+                new AcceptableValueRange<float>(0f, 5f)));
+
+        UiAutoAlignMaxDistance = config.Bind(
+            "UI",
+            "UI Auto Align Max Distance",
+            0.45f,
+            new ConfigDescription(
+                "Log (and ensure snap) when UI is farther than this many meters from the ideal head-forward pose after a camera jump.",
+                new AcceptableValueRange<float>(0.1f, 5f)));
     }
 }

@@ -16,11 +16,11 @@ public static class LayerHelper
         {
             if (LayerMask.LayerToName(layer).Length != 0) continue;
 
-            Debug.Log($"Found free layer: {layer}");
+            Debug.Log($"[UUVR] Found free layer: {layer}");
             return layer;
         }
 
-        Debug.LogWarning("Failed to find a free layer to use for VR UI. Falling back to last layer.");
+        Debug.LogWarning("[UUVR] Failed to find a free layer to use for VR UI. Falling back to last layer.");
         return 31;
     }
 
@@ -40,14 +40,19 @@ public static class LayerHelper
         return layerOverride > -1 ? layerOverride : GetFreeLayerCached();
     }
 
+    /// <summary>
+    /// Sets layer on this transform and every descendant (including leaves).
+    /// Previous implementation only assigned when childCount &gt; 0, so Image/Text leaves never moved.
+    /// </summary>
     public static void SetLayerRecursive(Transform transform, int layer)
     {
-        // Not using the usual foreach Transform etc because it fails in silly il2cpp.
+        if (transform == null) return;
+
+        transform.gameObject.layer = layer;
+
         for (var index = 0; index < transform.childCount; index++)
         {
-            var child = transform.GetChild(index);
-            SetLayerRecursive(child, layer);
-            transform.gameObject.layer = layer;
+            SetLayerRecursive(transform.GetChild(index), layer);
         }
     }
 }

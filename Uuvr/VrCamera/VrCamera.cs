@@ -65,6 +65,67 @@ public class VrCamera : UuvrBehaviour
     private void OnDestroy()
     {
         VrCameras.Remove(ParentCamera);
+        if (HighestDepthVrCamera == this)
+        {
+            HighestDepthVrCamera = null;
+        }
+    }
+
+    /// <summary>
+    /// Pick the best active VR camera for UI / follow. Stale HighestDepth (disabled or
+    /// destroyed after a cutscene / teleport) is a common reason UI freezes in world space.
+    /// </summary>
+    public static VrCamera? ResolveBestForUi()
+    {
+        if (IsUsable(HighestDepthVrCamera))
+        {
+            return HighestDepthVrCamera;
+        }
+
+        VrCamera? best = null;
+        var bestDepth = float.NegativeInfinity;
+
+        foreach (var parentCam in VrCameras)
+        {
+            // Unity fake-null
+            if (parentCam == null) continue;
+            if (!parentCam.isActiveAndEnabled) continue;
+
+            var vc = parentCam.GetComponent<VrCamera>();
+            if (!IsUsable(vc)) continue;
+
+            var depth = vc!.CameraInUse != null ? vc.CameraInUse.depth : parentCam.depth;
+            if (best == null || depth >= bestDepth)
+            {
+                best = vc;
+                bestDepth = depth;
+            }
+        }
+
+        HighestDepthVrCamera = best;
+        return best;
+    }
+
+    public static Camera? ResolveCameraInUse()
+    {
+        return ResolveBestForUi()?.CameraInUse;
+    }
+
+    public static Transform? ResolvePoseTransform()
+    {
+        var cam = ResolveCameraInUse();
+        return cam != null ? cam.transform : null;
+    }
+
+    private static bool IsUsable(VrCamera? vc)
+    {
+        if (vc == null) return false;
+        var parent = vc.ParentCamera;
+        if (parent == null || !parent.isActiveAndEnabled) return false;
+        var use = vc.CameraInUse;
+        if (use == null) return false;
+        // Child cam may be active under a disabled-looking path; parent must be live.
+        return parent.gameObject.activeInHierarchy;
     }
 
     private void Start()
@@ -145,32 +206,51 @@ public class VrCamera : UuvrBehaviour
             _childCamera.depth = -100;
         }
 
-        if (HighestDepthVrCamera == null || ParentCamera.depth > HighestDepthVrCamera.CameraInUse.depth)
+        // Only rank live cameras. After teleports / camera swaps the previous "highest"
+        // often stays disabled but non-null — UI would keep following the old transform.
+        if (ParentCamera != null && ParentCamera.isActiveAndEnabled)
         {
-            HighestDepthVrCamera = this;
+            var useDepth = CameraInUse != null ? CameraInUse.depth : ParentCamera.depth;
+            var best = HighestDepthVrCamera;
+            var bestCam = best != null ? best.ParentCamera : null;
+            var bestUse = best != null ? best.CameraInUse : null;
+            var bestDead = best == null || bestCam == null || !bestCam.isActiveAndEnabled || bestUse == null;
+            var bestDepth = !bestDead && bestUse != null ? bestUse.depth : float.NegativeInfinity;
+            if (bestDead || useDepth >= bestDepth)
+            {
+                HighestDepthVrCamera = this;
+            }
         }
     }
 
     private void UpdateRelativeMatrix()
     {
         if (ModConfiguration.Instance.CameraTracking.Value != ModConfiguration.CameraTrackingMode.RelativeMatrix) return;
-        
-        var eye = ParentCamera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Left ? Camera.StereoscopicEye.Left : Camera.StereoscopicEye.Right;
-       
-        // A bit confused by this.
-        // worldToCameraMatrix by itself almost works perfectly, but it breaks culling.
-        // I expected SetStereoViewMatrix by itself to be enough, but it was even more broken (although culling did work).
-        // So I'm just doing both I guess.
+        if (ParentCamera == null || _childCamera == null) return;
+
+        var eye = ParentCamera.stereoActiveEye == Camera.MonoOrStereoscopicEye.Left
+            ? Camera.StereoscopicEye.Left
+            : Camera.StereoscopicEye.Right;
+
+        // worldToCameraMatrix alone breaks frustum culling (Unity still culls from transform):
+        // result is often skybox + near UI only, no scene geometry — both HMD and game view.
         ParentCamera.worldToCameraMatrix = _childCamera.GetStereoViewMatrix(eye);
 
         if (ModConfiguration.Instance.RelativeCameraSetStereoView.Value)
         {
-            // Some times setting worldToCameraMatrix is enough, some times not. I'm not sure why, need to learn more.
-            // Some times it's actually better not to call SetStereoViewMatrix, since it messes up the shadows. Like in Aragami.
+            // Some games need this; others get broken shadows (e.g. Aragami).
             ParentCamera.SetStereoViewMatrix(eye, ParentCamera.worldToCameraMatrix);
         }
-        
-        // TODO: reset camera matrices and everything else on disabling VR
+
+        // Keep culling in sync with the overridden view matrix (fixes empty-world / skybox-only).
+        try
+        {
+            ParentCamera.cullingMatrix = ParentCamera.projectionMatrix * ParentCamera.worldToCameraMatrix;
+        }
+        catch
+        {
+            // Some SRP/Unity builds disallow setting cullingMatrix.
+        }
     }
 
     // TODO: add option for rendering original camera forward line.

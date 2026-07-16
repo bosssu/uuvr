@@ -49,6 +49,8 @@ public class UuvrPlugin
         ClassInjector.RegisterTypeInIl2Cpp<CanvasRedirect>();
         ClassInjector.RegisterTypeInIl2Cpp<UiOverlayRenderMode>();
         ClassInjector.RegisterTypeInIl2Cpp<VrUiCursor>();
+        ClassInjector.RegisterTypeInIl2Cpp<VrUiWorldInput>();
+        ClassInjector.RegisterTypeInIl2Cpp<UuvrUiBaseInput>();
         ClassInjector.RegisterTypeInIl2Cpp<VrUiManager>();
         ClassInjector.RegisterTypeInIl2Cpp<FollowTarget>();
         // ClassInjector.RegisterTypeInIl2Cpp<UuvrInput>();

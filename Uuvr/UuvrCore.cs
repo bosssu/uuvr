@@ -63,6 +63,7 @@ public class UuvrCore: MonoBehaviour
     {
         if (_toggleVrKey.UpdateIsDown()) _vrTogglerManager?.ToggleVr();
         UpdatePhysicsRate();
+        DepthOfFieldDisabler.Tick();
     }
 
     private void UpdatePhysicsRate()

@@ -554,7 +554,21 @@ public class CanvasRedirect : UuvrBehaviour
         if (poseSource != null)
         {
             var idealPos = poseSource.TransformPoint(Vector3.forward * WorldSpaceDistance);
-            var idealRot = poseSource.rotation;
+            // Same rotation as the camera = panel faces away; player sees the back (L/R mirror).
+            // Optional 180° yaw makes the canvas face the HMD without using negative scale.
+            var faceCamera = true;
+            try
+            {
+                faceCamera = ModConfiguration.Instance.UiFaceCamera.Value;
+            }
+            catch
+            {
+                // config not ready
+            }
+
+            var idealRot = faceCamera
+                ? poseSource.rotation * Quaternion.Euler(0f, 180f, 0f)
+                : poseSource.rotation;
 
             // Teleport recovery: if something left the plane behind, snap + log.
             if (autoAlign)

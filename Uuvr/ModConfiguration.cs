@@ -61,6 +61,16 @@ public class ModConfiguration
         CanvasRedirect,
     }
 
+    public enum GameProfileMode
+    {
+        [Description("Once (apply profile only until Applied Profile Id matches)")]
+        Once,
+        [Description("Always (re-apply profile every launch)")]
+        Always,
+        [Description("Never (do not apply bundled profiles)")]
+        Never,
+    }
+
     public readonly ConfigFile Config;
     public readonly ConfigEntry<CameraTrackingMode> CameraTracking;
     public readonly ConfigEntry<bool> RelativeCameraSetStereoView;
@@ -80,6 +90,12 @@ public class ModConfiguration
     public readonly ConfigEntry<bool> UiAutoAlign;
     public readonly ConfigEntry<float> UiAutoAlignInterval;
     public readonly ConfigEntry<float> UiAutoAlignMaxDistance;
+    public readonly ConfigEntry<bool> UiFaceCamera;
+    public readonly ConfigEntry<bool> UiCaptureFlipX;
+    public readonly ConfigEntry<string> ForcedGameFixId;
+    public readonly ConfigEntry<bool> ApplyGameProfile;
+    public readonly ConfigEntry<GameProfileMode> ProfileMode;
+    public readonly ConfigEntry<string> AppliedProfileId;
     
 #if MODERN
     public readonly ConfigEntry<VrApi> PreferredVrApi;
@@ -227,5 +243,48 @@ public class ModConfiguration
             new ConfigDescription(
                 "Log (and ensure snap) when UI is farther than this many meters from the ideal head-forward pose after a camera jump.",
                 new AcceptableValueRange<float>(0.1f, 5f)));
+
+        // World Space plane placed with the same rotation as the HMD faces away from the
+        // player; without a 180° yaw you look at the back of the canvas (L/R mirrored).
+        UiFaceCamera = config.Bind(
+            "UI",
+            "UI Face Camera",
+            true,
+            "HDRP World Space only: yaw the canvas 180° so the panel faces the HMD. " +
+            "Has no effect on non-HDRP ScreenSpaceCamera capture (use UI Capture Flip X).");
+
+        // Non-HDRP CanvasRedirect draws UI into a RT then onto a head-locked quad (Y=180).
+        // That plate commonly appears L/R mirrored; negative scale.x un-mirrors the texture.
+        UiCaptureFlipX = config.Bind(
+            "UI",
+            "UI Capture Flip X",
+            true,
+            "Non-HDRP capture plane only: flip the VR UI quad horizontally (fixes mirrored menus). " +
+            "Does not apply to HDRP World Space canvases.");
+
+        // --- Game fix framework (L0 profile + L1 optional code) ---
+        ForcedGameFixId = config.Bind(
+            "GameFix",
+            "Forced Game Id",
+            "",
+            "Force a GameProfiles id (e.g. swpt, bloodyspell). Empty = auto-detect from product/process name.");
+
+        ApplyGameProfile = config.Bind(
+            "GameFix",
+            "Apply Profile",
+            true,
+            "When a game is matched, apply the bundled GameProfiles/{id}.cfg overrides.");
+
+        ProfileMode = config.Bind(
+            "GameFix",
+            "Profile Mode",
+            GameProfileMode.Once,
+            "Once: apply only until Applied Profile Id matches (keeps your later edits). Always: re-apply every launch. Never: skip L0.");
+
+        AppliedProfileId = config.Bind(
+            "GameFix",
+            "Applied Profile Id",
+            "",
+            "Internal marker for Profile Mode=Once. Clear this value to re-apply the bundled profile on next launch.");
     }
 }

@@ -29,12 +29,14 @@ public class VrUiManager : UuvrBehaviour
     private bool _useWorldSpaceUi;
     private bool _loggedMask;
     private int _frames;
+    private VrUiCursor? _vrUiCursor;
 
     private void Start()
     {
         SetUpUi();
         OnSettingChanged();
-        Create<VrUiCursor>(transform);
+        _vrUiCursor = Create<VrUiCursor>(transform);
+        _vrUiCursor.SetUiTexture(_uiTexture);
     }
 
     protected override void OnSettingChanged()
@@ -183,9 +185,12 @@ public class VrUiManager : UuvrBehaviour
 
         var aspect = (float)_uiTexture.height / Mathf.Max(1, _uiTexture.width);
         var uiScale = 1f;
+        var flipX = true;
         try
         {
             uiScale = Mathf.Clamp(ModConfiguration.Instance.UiScale.Value, 0.4f, 3f);
+            // Capture plate (non-HDRP) only — World Space uses real canvases.
+            flipX = !_useWorldSpaceUi && ModConfiguration.Instance.UiCaptureFlipX.Value;
         }
         catch
         {
@@ -195,7 +200,19 @@ public class VrUiManager : UuvrBehaviour
         var quadWidth = 1.6f * uiScale;
         var y = quadWidth * aspect;
         if (flipYForCapture) y = -y;
-        _vrUiQuad.transform.localScale = new Vector3(quadWidth, y, 1f);
+        // Negative X undoes L/R mirror on the head-locked capture quad (Y=180 facing).
+        var x = flipX ? -quadWidth : quadWidth;
+        _vrUiQuad.transform.localScale = new Vector3(x, y, 1f);
+
+        if (_uiQuadMaterial != null)
+        {
+            // Keep UVs un-mirrored at material level; geometry flip is enough.
+            if (_uiQuadMaterial.HasProperty("_MainTex"))
+            {
+                _uiQuadMaterial.mainTextureScale = Vector2.one;
+                _uiQuadMaterial.mainTextureOffset = Vector2.zero;
+            }
+        }
     }
 
     private void SetUpUi()
@@ -231,7 +248,9 @@ public class VrUiManager : UuvrBehaviour
         _quadRenderer.material = _uiQuadMaterial;
         _quadRenderer.shadowCastingMode = ShadowCastingMode.Off;
         _quadRenderer.receiveShadows = false;
+#if MODERN
         _quadRenderer.allowOcclusionWhenDynamic = false;
+#endif
         // Placeholder plate off by default on HDRP (world-space UI or optional Mirror).
         _quadRenderer.enabled = false;
 
@@ -308,11 +327,17 @@ public class VrUiManager : UuvrBehaviour
                 CanvasRedirect.WorldSpaceDistance = _vrUiQuad.transform.localPosition.z;
             }
 
-            // Show capture plate only for non-HDRP mirror / non-world-space paths.
+            // Capture plate: Mirror mode uses MeshRenderer; CanvasRedirect non-HDRP uses DrawMesh.
             if (_quadRenderer != null)
             {
                 var showPlate = _useGameViewCapture && !UiCameraSetup.IsHdrp();
                 _quadRenderer.enabled = showPlate;
+            }
+
+            // Re-assert scale/flip every frame so config changes and LateUpdate Y=180 stay consistent.
+            if (!_useWorldSpaceUi)
+            {
+                ApplyQuadScale(_useGameViewCapture);
             }
         }
 
@@ -399,6 +424,7 @@ public class VrUiManager : UuvrBehaviour
         _canvasRedirectPatchMode?.SetUpTargetTexture(_uiTexture);
         _screenMirrorPatchMode?.SetUpTargetTexture(_uiTexture);
         _hdrpPresenter?.SetUiTexture(_uiTexture);
+        _vrUiCursor?.SetUiTexture(_uiTexture);
         ApplyQuadScale(_useGameViewCapture);
     }
 

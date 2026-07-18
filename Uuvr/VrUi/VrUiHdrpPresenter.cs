@@ -111,6 +111,7 @@ public class VrUiHdrpPresenter : UuvrBehaviour
         }
     }
 
+#if MODERN
     private void OnEndFrameRendering(ScriptableRenderContext context, Camera[] cameras)
     {
         if (_uiTexture == null || !_uiTexture.IsCreated()) return;
@@ -131,6 +132,7 @@ public class VrUiHdrpPresenter : UuvrBehaviour
             _frameLogBudget--;
         }
     }
+#endif
 
     /// <summary>
     /// Downscale capture, chroma-key magenta clear to alpha=0. Dark UI is preserved (unlike black key).

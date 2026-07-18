@@ -20,6 +20,9 @@
         <Content Include="Assets\**" >
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
+        <Content Include="GameProfiles\**" >
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
     <!--  Il2Cpp  -->

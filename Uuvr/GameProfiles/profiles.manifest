@@ -1,0 +1,8 @@
+﻿# UUVR game profile manifest
+# Format: id|profileFile|productContainsCsv|processEqualsCsv
+# product: substring match (case-insensitive)
+# process: exact process or game folder name (case-insensitive)
+# Lines starting with # are comments.
+
+swpt|swpt.cfg|She Will Punish Them|She Will Punish Them
+bloodyspell|bloodyspell.cfg|BloodySpell,Blood Spell,Bloodspell|BloodySpell,Bloodspell

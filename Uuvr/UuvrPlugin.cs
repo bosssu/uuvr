@@ -2,6 +2,7 @@
 using System.Reflection;
 using BepInEx;
 using HarmonyLib;
+using Uuvr.GameFixes;
 using Uuvr.VrCamera;
 using Uuvr.VrUi;
 using Uuvr.VrUi.PatchModes;
@@ -41,8 +42,17 @@ public class UuvrPlugin
         ModFolderPath = Path.GetDirectoryName(Assembly.GetAssembly(typeof(UuvrPlugin)).Location);
         
         new ModConfiguration(Config);
-        Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
-        
+
+        // Core Harmony only — do NOT PatchAll(assembly) or GameFix patches would run in every game.
+        var harmony = new Harmony(
+#if LEGACY
+            "raicuparta.uuvr-legacy"
+#elif MODERN
+            "raicuparta.uuvr-modern"
+#endif
+        );
+        harmony.PatchAll(typeof(Patches));
+
 #if CPP
         ClassInjector.RegisterTypeInIl2Cpp<VrCamera.VrCamera>();
         ClassInjector.RegisterTypeInIl2Cpp<VrCameraOffset>();
@@ -62,6 +72,9 @@ public class UuvrPlugin
        ClassInjector.RegisterTypeInIl2Cpp<CanvasRedirectPatchMode>();
        ClassInjector.RegisterTypeInIl2Cpp<ScreenMirrorPatchMode>();
 #endif
+
+        // L0 game profile + optional L1 code fix (before core systems start).
+        GameFixHost.Bootstrap();
 
         UuvrCore.Create();
     }

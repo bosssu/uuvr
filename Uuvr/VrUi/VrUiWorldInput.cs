@@ -313,7 +313,8 @@ public class VrUiWorldInput : UuvrBehaviour
         if (_cursorTexture != null) return;
         try
         {
-            var path = Path.Combine(UuvrPlugin.ModFolderPath, "Assets", "cursor.bmp");
+            // net35 Path.Combine only accepts two args.
+            var path = Path.Combine(Path.Combine(UuvrPlugin.ModFolderPath, "Assets"), "cursor.bmp");
             if (!File.Exists(path))
             {
                 Debug.LogWarning($"[UUVR] Cursor texture missing: {path}");

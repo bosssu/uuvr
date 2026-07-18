@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using Uuvr.GameFixes;
 using Uuvr.VrCamera;
 using Uuvr.VrTogglers;
 using Uuvr.VrUi;
@@ -21,6 +23,7 @@ public class UuvrCore: MonoBehaviour
     private VrUiManager? _vrUi;
     private PropertyInfo? _refreshRateProperty;
     private VrTogglerManager? _vrTogglerManager;
+    private bool _sceneHooked;
 
     public static void Create()
     {
@@ -38,6 +41,8 @@ public class UuvrCore: MonoBehaviour
 
     private void OnDestroy()
     {
+        UnhookSceneLoaded();
+        GameFixHost.OnUnload();
         Debug.Log("UUVR has been destroyed. This shouldn't have happened. Recreating...");
         
         Create();
@@ -57,6 +62,43 @@ public class UuvrCore: MonoBehaviour
         _vrTogglerManager = new VrTogglerManager();
 
         SetPositionTrackingEnabled(false);
+
+        HookSceneLoaded();
+        GameFixHost.OnCoreReady(this);
+    }
+
+    private void HookSceneLoaded()
+    {
+        if (_sceneHooked) return;
+        try
+        {
+            SceneManager.sceneLoaded += OnUnitySceneLoaded;
+            _sceneHooked = true;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("[UUVR] Failed to hook SceneManager.sceneLoaded: " + e.Message);
+        }
+    }
+
+    private void UnhookSceneLoaded()
+    {
+        if (!_sceneHooked) return;
+        try
+        {
+            SceneManager.sceneLoaded -= OnUnitySceneLoaded;
+        }
+        catch
+        {
+            // ignore
+        }
+
+        _sceneHooked = false;
+    }
+
+    private void OnUnitySceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        GameFixHost.OnSceneLoaded(scene.name, scene.buildIndex);
     }
 
     private void Update()
